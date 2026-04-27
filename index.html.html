@@ -1,0 +1,433 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.app{max-width:400px;margin:0 auto;padding:12px;font-family:var(--font-sans)}
+.tab-bar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-bottom:16px}
+.tab{padding:9px 4px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;font-size:12px;font-weight:400;color:var(--color-text-secondary);cursor:pointer;transition:all .15s;text-align:center;line-height:1.4}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.section{display:none}.section.active{display:block}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px;margin-bottom:12px}
+.card-title{font-size:13px;color:var(--color-text-secondary);margin-bottom:4px;font-weight:500}
+.card-subtitle{font-size:11px;color:var(--color-text-tertiary);margin-bottom:12px}
+.formula-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 13px;font-size:12px;color:var(--color-text-primary);margin-bottom:14px;font-family:var(--font-mono);line-height:1.6;white-space:pre}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;color:var(--color-text-secondary);margin-bottom:5px}
+.field input{width:100%;padding:9px 12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:15px;background:var(--color-background-primary);color:var(--color-text-primary)}
+.field input:focus{outline:none;border-color:var(--color-border-primary)}
+.field .hint{font-size:11px;color:var(--color-text-tertiary);margin-top:4px}
+.angle-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}
+.angle-btn{padding:8px 4px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;font-size:12px;color:var(--color-text-secondary);cursor:pointer;text-align:center;transition:all .12s}
+.angle-btn.selected{border-color:var(--color-border-primary);background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500}
+.k-mode-bar{display:flex;gap:6px;margin-bottom:10px}
+.k-mode-btn{flex:1;padding:8px 0;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;font-size:12px;color:var(--color-text-secondary);cursor:pointer;transition:all .12s}
+.k-mode-btn.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.k-badge{display:inline-block;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:6px 12px;font-size:13px;font-family:var(--font-mono);color:var(--color-text-primary);margin-top:6px}
+.k-date-parsed{font-size:12px;color:var(--color-text-secondary);margin-top:5px;min-height:16px}
+.k-date-error{font-size:12px;color:#E24B4A;margin-top:5px;display:none}
+.method-bar{display:flex;gap:6px;margin-bottom:12px}
+.method-btn{flex:1;padding:9px 0;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;font-size:13px;color:var(--color-text-secondary);cursor:pointer;transition:all .12s}
+.method-btn.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.col-header{font-size:11px;color:var(--color-text-tertiary);text-align:center;margin-bottom:4px}
+.input-group{display:grid;grid-template-columns:24px minmax(0,1fr) minmax(0,1fr);gap:6px;align-items:center;margin-bottom:8px}
+.input-group .num{font-size:12px;color:var(--color-text-tertiary);text-align:right}
+.vd-preview{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:8px 12px;font-size:12px;color:var(--color-text-secondary);margin-bottom:10px;display:none;font-family:var(--font-mono);white-space:pre;line-height:1.7}
+.ratio-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 13px;margin-bottom:10px;display:none}
+.ratio-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px}
+.ratio-label{color:var(--color-text-secondary)}
+.ratio-val{font-family:var(--font-mono);font-weight:500;color:var(--color-text-primary)}
+.btn-calc{width:100%;padding:12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary);font-size:15px;font-weight:500;cursor:pointer;margin-top:4px}
+.btn-calc:active{transform:scale(0.98)}
+.result-box{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:18px;text-align:center;margin-top:12px;display:none}
+.result-label{font-size:13px;color:var(--color-text-secondary);margin-bottom:4px}
+.result-value{font-size:32px;font-weight:500;color:var(--color-text-primary)}
+.result-unit{font-size:15px;color:var(--color-text-secondary);margin-left:4px}
+.result-sub{font-size:12px;color:var(--color-text-tertiary);margin-top:8px;font-family:var(--font-mono);line-height:1.7;white-space:pre;text-align:left}
+.error{color:#E24B4A;font-size:12px;margin-top:6px;display:none}
+.divider{height:0.5px;background:var(--color-border-tertiary);margin:8px 0}
+</style>
+
+<div class="app">
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('general',this)">일반콘크리트<br><span style="font-size:10px;opacity:.7">30MPa 미만</span></button>
+    <button class="tab" onclick="switchTab('science',this)">과학기술부<br><span style="font-size:10px;opacity:.7">30MPa 이상</span></button>
+    <button class="tab" onclick="switchTab('kalis',this)">KALIS<br><span style="font-size:10px;opacity:.7">40MPa 이상</span></button>
+    <button class="tab" onclick="switchTab('ultrasonic',this)">초음파속도법</button>
+  </div>
+
+  <div id="section-general" class="section active">
+    <div class="card">
+      <div class="card-title">일반콘크리트강도 추정식</div>
+      <div class="card-subtitle">일본건축학회식 · 적용범위 30MPa 미만</div>
+      <div class="formula-box">fck = (7.3×(R₀+α)+100) × 0.098 × k</div>
+      <div id="schmidt-inputs-general"></div>
+      <div class="error" id="err-general">R₀와 재령계수를 확인해 주세요.</div>
+      <button class="btn-calc" onclick="calcSchmidt('general')">압축강도 추정</button>
+      <div class="result-box" id="res-general">
+        <div class="result-label">추정 압축강도 fck</div>
+        <div><span class="result-value" id="res-general-val">—</span><span class="result-unit">MPa</span></div>
+        <div class="result-sub" id="res-general-sub"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="section-science" class="section">
+    <div class="card">
+      <div class="card-title">과학기술부 추정식</div>
+      <div class="card-subtitle">적용범위 30MPa 이상</div>
+      <div class="formula-box">fck = ((15.2×(R₀+α) − 112.8) × 0.1) × k</div>
+      <div id="schmidt-inputs-science"></div>
+      <div class="error" id="err-science">R₀와 재령계수를 확인해 주세요.</div>
+      <button class="btn-calc" onclick="calcSchmidt('science')">압축강도 추정</button>
+      <div class="result-box" id="res-science">
+        <div class="result-label">추정 압축강도 fck</div>
+        <div><span class="result-value" id="res-science-val">—</span><span class="result-unit">MPa</span></div>
+        <div class="result-sub" id="res-science-sub"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="section-kalis" class="section">
+    <div class="card">
+      <div class="card-title">KALIS 추정식</div>
+      <div class="card-subtitle">적용범위 40MPa 이상</div>
+      <div class="formula-box">fck = (1.3343×(R₀+α) + 8.1977) × k</div>
+      <div id="schmidt-inputs-kalis"></div>
+      <div class="error" id="err-kalis">R₀와 재령계수를 확인해 주세요.</div>
+      <button class="btn-calc" onclick="calcSchmidt('kalis')">압축강도 추정</button>
+      <div class="result-box" id="res-kalis">
+        <div class="result-label">추정 압축강도 fck</div>
+        <div><span class="result-value" id="res-kalis-val">—</span><span class="result-unit">MPa</span></div>
+        <div class="result-sub" id="res-kalis-sub"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="section-ultrasonic" class="section">
+    <div class="card">
+      <div class="card-title">일본재료학회식</div>
+      <div class="formula-box" id="us-formula">F = (102×Vd − 117) × 0.098
+Vd = L(mm) ÷ t(μs)　→　km/s</div>
+      <div class="method-bar">
+        <button class="method-btn active" id="btn-direct" onclick="switchMethod('direct')">직접법</button>
+        <button class="method-btn" id="btn-indirect" onclick="switchMethod('indirect')">간접법</button>
+      </div>
+
+      <!-- 직접법 -->
+      <div id="direct-inputs">
+        <div class="field">
+          <label>L — 측정 거리 (mm)</label>
+          <input type="number" id="d-L" placeholder="예) 300" step="1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label>t — 전파시간 (μs)</label>
+          <input type="number" id="d-t" placeholder="예) 72.1" step="0.1" inputmode="decimal" oninput="previewDirectVd()">
+        </div>
+        <div class="vd-preview" id="direct-vd-preview"></div>
+      </div>
+
+      <!-- 간접법 -->
+      <div id="indirect-inputs" style="display:none">
+        <div style="display:grid;grid-template-columns:24px minmax(0,1fr) minmax(0,1fr);gap:6px;margin-bottom:4px">
+          <div></div>
+          <div class="col-header">L (mm)</div>
+          <div class="col-header">t (μs)</div>
+        </div>
+        <div class="input-group">
+          <span class="num">①</span>
+          <input type="number" id="i-L1" placeholder="예) 100" step="1" inputmode="decimal" oninput="previewIndirect()">
+          <input type="number" id="i-t1" placeholder="예) 24.0" step="0.1" inputmode="decimal" oninput="previewIndirect()">
+        </div>
+        <div class="input-group">
+          <span class="num">②</span>
+          <input type="number" id="i-L2" placeholder="예) 150" step="1" inputmode="decimal" oninput="previewIndirect()">
+          <input type="number" id="i-t2" placeholder="예) 36.0" step="0.1" inputmode="decimal" oninput="previewIndirect()">
+        </div>
+        <div class="input-group">
+          <span class="num">③</span>
+          <input type="number" id="i-L3" placeholder="예) 200" step="1" inputmode="decimal" oninput="previewIndirect()">
+          <input type="number" id="i-t3" placeholder="예) 48.0" step="0.1" inputmode="decimal" oninput="previewIndirect()">
+        </div>
+        <!-- 각 측점 Vd -->
+        <div class="vd-preview" id="indirect-vd-preview"></div>
+        <!-- 비율 박스 -->
+        <div class="ratio-box" id="ratio-box">
+          <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:6px;font-weight:500">측점 간 속도 비율 (100%에 가까울수록 균일)</div>
+          <div class="divider"></div>
+          <div class="ratio-row"><span class="ratio-label">①÷② 비율</span><span class="ratio-val" id="ratio-12">—</span></div>
+          <div class="ratio-row"><span class="ratio-label">②÷③ 비율</span><span class="ratio-val" id="ratio-23">—</span></div>
+          <div class="ratio-row"><span class="ratio-label">③÷① 비율</span><span class="ratio-val" id="ratio-31">—</span></div>
+        </div>
+      </div>
+
+      <div class="error" id="err-ultrasonic">값을 모두 입력해 주세요.</div>
+      <button class="btn-calc" onclick="calcUltrasonic()">압축강도 추정</button>
+      <div class="result-box" id="res-ultrasonic">
+        <div class="result-label">추정 압축강도 F</div>
+        <div><span class="result-value" id="res-ultrasonic-val">—</span><span class="result-unit">MPa</span></div>
+        <div class="result-sub" id="res-ultrasonic-sub"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentMethod = 'direct';
+
+var kTable = [
+  [4,1.90],[5,1.84],[6,1.78],[7,1.72],[8,1.67],[9,1.61],[10,1.55],[11,1.49],[12,1.45],[13,1.40],
+  [14,1.36],[15,1.32],[16,1.28],[17,1.25],[18,1.22],[19,1.18],[20,1.15],[21,1.12],[22,1.10],
+  [23,1.08],[24,1.06],[25,1.04],[26,1.02],[27,1.01],[28,1.00],[29,0.99],[30,0.99],[32,0.98],
+  [34,0.96],[36,0.95],[38,0.94],[40,0.93],[42,0.92],[44,0.91],[46,0.90],[47,0.90],[48,0.90],
+  [50,0.89],[52,0.88],[54,0.87],[56,0.86],[58,0.86],[60,0.86],[62,0.85],[64,0.85],[66,0.85],
+  [68,0.84],[70,0.84],[72,0.84],[74,0.83],[76,0.83],[78,0.82],[80,0.82],[82,0.82],[84,0.81],
+  [86,0.81],[88,0.80],[90,0.80],[100,0.78],[125,0.76],[150,0.74],[175,0.73],[200,0.72],
+  [250,0.71],[300,0.70],[400,0.68],[500,0.67],[750,0.66],[1000,0.65],[2000,0.64],[3000,0.63]
+];
+
+function getKFromDays(days) {
+  if(days<4) return null;
+  if(days>=3000) return 0.63;
+  for(var i=kTable.length-1;i>=0;i--){
+    if(days>=kTable[i][0]){
+      if(i===kTable.length-1) return kTable[i][1];
+      var d0=kTable[i][0],k0=kTable[i][1],d1=kTable[i+1][0],k1=kTable[i+1][1];
+      return +(k0+(days-d0)/(d1-d0)*(k1-k0)).toFixed(3);
+    }
+  }
+  return null;
+}
+
+function parseDate8(str){
+  if(!/^\d{8}$/.test(str)) return null;
+  var y=parseInt(str.slice(0,4)),m=parseInt(str.slice(4,6)),d=parseInt(str.slice(6,8));
+  if(m<1||m>12||d<1||d>31) return null;
+  var dt=new Date(y,m-1,d);
+  if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d) return null;
+  return dt;
+}
+
+function formatDate(dt){
+  return dt.getFullYear()+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+String(dt.getDate()).padStart(2,'0');
+}
+
+var schmidtState={general:{alpha:0,kMode:'direct'},science:{alpha:0,kMode:'direct'},kalis:{alpha:0,kMode:'direct'}};
+
+function buildSchmidtInputs(id){
+  document.getElementById('schmidt-inputs-'+id).innerHTML=`
+    <div class="field">
+      <label>R₀ — 평균 반발경도</label>
+      <input type="number" id="r0-${id}" placeholder="예) 32.5" step="0.1" inputmode="decimal">
+    </div>
+    <div class="field">
+      <label>α — 각도보정계수</label>
+      <div class="angle-grid">
+        <button class="angle-btn selected" onclick="selectAngle('${id}',this,0)">수평 (0)</button>
+        <button class="angle-btn" onclick="selectAngle('${id}',this,-4.6)">상향 90° (−4.6)</button>
+        <button class="angle-btn" onclick="selectAngle('${id}',this,-3.5)">상향 45° (−3.5)</button>
+        <button class="angle-btn" onclick="selectAngle('${id}',this,3.0)">하향 45° (+3.0)</button>
+        <button class="angle-btn" onclick="selectAngle('${id}',this,5.0)">하향 90° (+5.0)</button>
+        <button class="angle-btn" onclick="selectAngle('${id}',this,'custom')">직접입력</button>
+      </div>
+      <input type="number" id="alpha-custom-${id}" placeholder="보정계수 직접 입력" step="0.1" inputmode="decimal"
+        style="margin-top:8px;display:none;width:100%;padding:9px 12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:15px;background:var(--color-background-primary);color:var(--color-text-primary)">
+    </div>
+    <div class="field">
+      <label>k — 재령계수</label>
+      <div class="k-mode-bar">
+        <button class="k-mode-btn active" id="km-direct-${id}" onclick="switchKMode('${id}','direct')">직접 입력</button>
+        <button class="k-mode-btn" id="km-date-${id}" onclick="switchKMode('${id}','date')">준공날짜 입력</button>
+      </div>
+      <div id="k-direct-wrap-${id}">
+        <input type="number" id="k-manual-${id}" placeholder="예) 1.00" step="0.01" value="1.00" inputmode="decimal">
+        <div class="hint">재령 28일 표준 = 1.00</div>
+      </div>
+      <div id="k-date-wrap-${id}" style="display:none">
+        <input type="text" id="k-date-input-${id}" placeholder="예) 20260427" maxlength="8" inputmode="numeric" oninput="onDateInput('${id}',this)">
+        <div class="hint">8자리 숫자 입력 (YYYYMMDD)</div>
+        <div class="k-date-parsed" id="k-date-parsed-${id}"></div>
+        <div class="k-date-error" id="k-date-error-${id}">올바른 날짜를 입력해 주세요</div>
+        <div id="k-date-result-${id}" style="display:none">
+          <div class="k-badge" id="k-date-badge-${id}"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function selectAngle(id,btn,val){
+  btn.closest('.angle-grid').querySelectorAll('.angle-btn').forEach(function(b){b.classList.remove('selected');});
+  btn.classList.add('selected');
+  var ci=document.getElementById('alpha-custom-'+id);
+  if(val==='custom'){ci.style.display='block';ci.focus();ci.oninput=function(){schmidtState[id].alpha=parseFloat(this.value)||0;};}
+  else{ci.style.display='none';schmidtState[id].alpha=val;}
+}
+
+function switchKMode(id,mode){
+  schmidtState[id].kMode=mode;
+  document.getElementById('km-direct-'+id).classList.toggle('active',mode==='direct');
+  document.getElementById('km-date-'+id).classList.toggle('active',mode==='date');
+  document.getElementById('k-direct-wrap-'+id).style.display=mode==='direct'?'block':'none';
+  document.getElementById('k-date-wrap-'+id).style.display=mode==='date'?'block':'none';
+}
+
+function onDateInput(id,el){
+  var val=el.value.replace(/\D/g,'');el.value=val;
+  var parsedEl=document.getElementById('k-date-parsed-'+id);
+  var errEl=document.getElementById('k-date-error-'+id);
+  var resEl=document.getElementById('k-date-result-'+id);
+  var badgeEl=document.getElementById('k-date-badge-'+id);
+  if(val.length<8){
+    parsedEl.textContent=val.length>0?val.slice(0,4)+(val.length>4?'.'+val.slice(4,6):'')+(val.length>6?'.'+val.slice(6,8):''):'';
+    errEl.style.display='none';resEl.style.display='none';return;
+  }
+  var dt=parseDate8(val);
+  if(!dt){parsedEl.textContent='';errEl.style.display='block';resEl.style.display='none';return;}
+  errEl.style.display='none';parsedEl.textContent=formatDate(dt);
+  var today=new Date(2026,3,27);
+  var days=Math.floor((today-dt)/(1000*60*60*24));
+  if(days<4){badgeEl.textContent='재령 '+days+'일 — 표 범위(4일) 미만';resEl.style.display='block';return;}
+  var k=getKFromDays(days);
+  badgeEl.textContent='재령 '+days+'일  →  k = '+k.toFixed(3);
+  resEl.style.display='block';
+}
+
+function getK(id){
+  if(schmidtState[id].kMode==='direct') return parseFloat(document.getElementById('k-manual-'+id).value);
+  var val=document.getElementById('k-date-input-'+id).value;
+  var dt=parseDate8(val);if(!dt) return NaN;
+  var today=new Date(2026,3,27);
+  var days=Math.floor((today-dt)/(1000*60*60*24));
+  if(days<4) return NaN;
+  return getKFromDays(days);
+}
+
+function getKLabel(id){
+  if(schmidtState[id].kMode==='direct') return 'k='+parseFloat(document.getElementById('k-manual-'+id).value).toFixed(3)+'  (직접입력)';
+  var val=document.getElementById('k-date-input-'+id).value;
+  var dt=parseDate8(val);
+  var today=new Date(2026,3,27);
+  var days=Math.floor((today-dt)/(1000*60*60*24));
+  return 'k='+getKFromDays(days).toFixed(3)+'  (재령 '+days+'일 / '+formatDate(dt)+', 표 2.4.2)';
+}
+
+function getAlpha(id){
+  var ci=document.getElementById('alpha-custom-'+id);
+  if(ci&&ci.style.display!=='none') return parseFloat(ci.value)||0;
+  return schmidtState[id].alpha;
+}
+
+function calcSchmidt(id){
+  var r0=parseFloat(document.getElementById('r0-'+id).value);
+  var k=getK(id);
+  var err=document.getElementById('err-'+id);
+  if(isNaN(r0)||isNaN(k)){err.style.display='block';return;}
+  err.style.display='none';
+  var alpha=getAlpha(id);
+  var Ra=r0+alpha;
+  var fck,formulaStr;
+  if(id==='general'){fck=(7.3*Ra+100)*0.098*k;formulaStr='(7.3×'+Ra.toFixed(2)+'+100)×0.098×'+k.toFixed(3);}
+  else if(id==='science'){fck=((15.2*Ra-112.8)*0.1)*k;formulaStr='((15.2×'+Ra.toFixed(2)+' − 112.8)×0.1)×'+k.toFixed(3);}
+  else{fck=(1.3343*Ra+8.1977)*k;formulaStr='(1.3343×'+Ra.toFixed(2)+' + 8.1977)×'+k.toFixed(3);}
+  document.getElementById('res-'+id+'-val').textContent=fck.toFixed(2);
+  document.getElementById('res-'+id+'-sub').textContent=
+    'R₀='+r0.toFixed(1)+'  α='+alpha+'  R₀+α='+Ra.toFixed(2)+'\n'+getKLabel(id)+'\n'+formulaStr+' = '+fck.toFixed(2)+' MPa';
+  document.getElementById('res-'+id).style.display='block';
+}
+
+function switchTab(tab,el){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
+  document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active')});
+  el.classList.add('active');
+  document.getElementById('section-'+tab).classList.add('active');
+}
+
+function switchMethod(m){
+  currentMethod=m;
+  document.getElementById('btn-direct').classList.toggle('active',m==='direct');
+  document.getElementById('btn-indirect').classList.toggle('active',m==='indirect');
+  document.getElementById('direct-inputs').style.display=m==='direct'?'block':'none';
+  document.getElementById('indirect-inputs').style.display=m==='indirect'?'block':'none';
+  document.getElementById('res-ultrasonic').style.display='none';
+  document.getElementById('err-ultrasonic').style.display='none';
+  document.getElementById('us-formula').textContent=m==='direct'
+    ?'F = (102×Vd − 117) × 0.098\nVd = L(mm) ÷ t(μs)　→　km/s'
+    :'F = (102×Vd − 117) × 0.098\nVd = (L÷t)×1.05　(간접법, 3점)';
+}
+
+function previewDirectVd(){
+  var L=parseFloat(document.getElementById('d-L').value);
+  var t=parseFloat(document.getElementById('d-t').value);
+  var prev=document.getElementById('direct-vd-preview');
+  if(isNaN(L)||isNaN(t)||L<=0||t<=0){prev.style.display='none';return;}
+  var vd=L/t;
+  prev.textContent='Vd = '+L+' ÷ '+t+' = '+vd.toFixed(4)+' km/s';
+  prev.style.display='block';
+}
+
+function previewIndirect(){
+  var pts=[
+    [parseFloat(document.getElementById('i-L1').value),parseFloat(document.getElementById('i-t1').value)],
+    [parseFloat(document.getElementById('i-L2').value),parseFloat(document.getElementById('i-t2').value)],
+    [parseFloat(document.getElementById('i-L3').value),parseFloat(document.getElementById('i-t3').value)]
+  ];
+  var valid=pts.filter(function(p){return !isNaN(p[0])&&!isNaN(p[1])&&p[0]>0&&p[1]>0;});
+  var prev=document.getElementById('indirect-vd-preview');
+  var ratioBox=document.getElementById('ratio-box');
+
+  if(!valid.length){prev.style.display='none';ratioBox.style.display='none';return;}
+
+  var vdVals=pts.map(function(p){
+    return (!isNaN(p[0])&&!isNaN(p[1])&&p[0]>0&&p[1]>0) ? p[0]/p[1]*1.05 : null;
+  });
+
+  var lines=vdVals.map(function(v,i){
+    return v!==null ? '측점'+(i+1)+': '+pts[i][0]+'÷'+pts[i][1]+'×1.05 = '+v.toFixed(4)+' km/s' : '측점'+(i+1)+': —';
+  });
+  prev.textContent=lines.join('\n');
+  prev.style.display='block';
+
+  // 3점 모두 입력된 경우 비율 계산
+  if(vdVals[0]!==null&&vdVals[1]!==null&&vdVals[2]!==null){
+    var r12=(vdVals[0]/vdVals[1]*100).toFixed(2)+'%';
+    var r23=(vdVals[1]/vdVals[2]*100).toFixed(2)+'%';
+    var r31=(vdVals[2]/vdVals[0]*100).toFixed(2)+'%';
+    document.getElementById('ratio-12').textContent=r12;
+    document.getElementById('ratio-23').textContent=r23;
+    document.getElementById('ratio-31').textContent=r31;
+    ratioBox.style.display='block';
+  } else {
+    ratioBox.style.display='none';
+  }
+}
+
+function calcUltrasonic(){
+  var err=document.getElementById('err-ultrasonic');
+  var vd,subLines='';
+  if(currentMethod==='direct'){
+    var L=parseFloat(document.getElementById('d-L').value);
+    var t=parseFloat(document.getElementById('d-t').value);
+    if(isNaN(L)||isNaN(t)||L<=0||t<=0){err.style.display='block';return;}
+    err.style.display='none';
+    vd=L/t;
+    subLines='L='+L+'mm  t='+t+'μs\nVd = '+L+' ÷ '+t+' = '+vd.toFixed(4)+' km/s';
+  } else {
+    var pts=[
+      [parseFloat(document.getElementById('i-L1').value),parseFloat(document.getElementById('i-t1').value)],
+      [parseFloat(document.getElementById('i-L2').value),parseFloat(document.getElementById('i-t2').value)],
+      [parseFloat(document.getElementById('i-L3').value),parseFloat(document.getElementById('i-t3').value)]
+    ];
+    for(var i=0;i<3;i++){if(isNaN(pts[i][0])||isNaN(pts[i][1])||pts[i][0]<=0||pts[i][1]<=0){err.style.display='block';return;}}
+    err.style.display='none';
+    var vdVals=pts.map(function(p){return p[0]/p[1]*1.05;});
+    vd=(vdVals[0]+vdVals[1]+vdVals[2])/3;
+    subLines=pts.map(function(p,i){return '측점'+(i+1)+': '+p[0]+'÷'+p[1]+'×1.05 = '+(p[0]/p[1]*1.05).toFixed(4)+' km/s';}).join('\n')+'\n평균 Vd = '+vd.toFixed(4)+' km/s';
+  }
+  var F=(102*vd-117)*0.098;
+  document.getElementById('res-ultrasonic-val').textContent=F.toFixed(2);
+  document.getElementById('res-ultrasonic-sub').textContent=subLines+'\n(102×'+vd.toFixed(4)+' − 117)×0.098 = '+F.toFixed(2)+' MPa';
+  document.getElementById('res-ultrasonic').style.display='block';
+}
+
+buildSchmidtInputs('general');
+buildSchmidtInputs('science');
+buildSchmidtInputs('kalis');
+</script>
