@@ -1,4 +1,4 @@
-var CACHE_NAME = 'ndt-calc-v3';
+var CACHE_NAME = 'ndt-calc-v4';
 var urlsToCache = [
   '/ndt-calc/',
   '/ndt-calc/index.html',
