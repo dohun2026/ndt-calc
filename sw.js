@@ -1,8 +1,11 @@
-var CACHE_NAME = 'ndt-calc-v4';
+var CACHE_NAME = 'ndt-calc-v5';
 var urlsToCache = [
   '/ndt-calc/',
   '/ndt-calc/index.html',
-  '/ndt-calc/manifest.json'
+  '/ndt-calc/manifest.json',
+  '/ndt-calc/icon-192.png',
+  '/ndt-calc/icon-512.png',
+  '/ndt-calc/apple-touch-icon.png'
 ];
 
 // 설치 시 캐시에 저장
