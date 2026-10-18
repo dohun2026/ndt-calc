@@ -80,8 +80,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Ne
 .pt-grid .no{font-size:13px;color:#8e8e93;text-align:center;font-weight:500}
 .pt-grid input{padding:10px;border:1px solid #e0e0e5;border-radius:10px;font-size:15px;background:#fff;outline:none;width:100%}
 .pt-grid input:focus{border-color:#007aff}
-.rev .t-only{display:none}
-.rev .pt-grid{grid-template-columns:26px minmax(0,1fr)}
+.multi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:10px}
+.cell{background:#f2f2f7;border-radius:10px;padding:8px 4px;text-align:center}
+.cell.off{opacity:.45}
+.cell .cl{font-size:11px;color:#8e8e93}
+.cell .cv{font-size:19px;font-weight:700;color:#007aff;font-variant-numeric:tabular-nums;margin:2px 0}
+.cell .cv small{font-size:11px;color:#8e8e93;font-weight:500}
+.cell .cs{font-size:10.5px;color:#3c3c43;line-height:1.5}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:0 6px;border-radius:8px}
+.tag.ok{background:#e3f7e8;color:#1a7f37}.tag.ng{background:#ffe5e3;color:#d70015}
 .ratio-box{background:#f2f2f7;border-radius:10px;padding:10px 14px;margin-bottom:12px}
 .ratio-title{font-size:12px;color:#8e8e93;font-weight:500;margin-bottom:4px}
 .ratio-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid #e0e0e5;font-size:13px}
@@ -134,13 +141,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Ne
           <div class="with-unit"><input class="num-in" type="number" id="d-L" placeholder="예) 300" step="1" inputmode="decimal" oninput="updateUS()"><span class="unit">mm</span></div>
         </div>
         <div class="field t-only">
-          <label>t — 전파시간</label>
+          <label>t — 전파시간 <span class="t-hint hidden" style="color:#8e8e93;font-weight:400">(선택 · 입력 시 판정)</span></label>
           <div class="with-unit"><input class="num-in" type="number" id="d-t" placeholder="예) 72.1" step="0.1" inputmode="decimal" oninput="updateUS()"><span class="unit">μs</span></div>
         </div>
       </div>
 
       <div id="surface-inputs" class="hidden">
-        <div class="pt-grid head"><div></div><div class="ch">L (mm)</div><div class="ch t-only">t (μs)</div></div>
+        <div class="pt-grid head"><div></div><div class="ch">L (mm)</div><div class="ch t-only">t (μs) <span class="t-hint hidden">· 선택</span></div></div>
         <div class="pt-grid"><span class="no">①</span><input type="number" id="s-L1" placeholder="100" inputmode="decimal" oninput="updateUS()"><input class="t-only" type="number" id="s-t1" placeholder="24.0" step="0.1" inputmode="decimal" oninput="updateUS()"></div>
         <div class="pt-grid"><span class="no">②</span><input type="number" id="s-L2" placeholder="150" inputmode="decimal" oninput="updateUS()"><input class="t-only" type="number" id="s-t2" placeholder="36.0" step="0.1" inputmode="decimal" oninput="updateUS()"></div>
         <div class="pt-grid"><span class="no">③</span><input type="number" id="s-L3" placeholder="200" inputmode="decimal" oninput="updateUS()"><input class="t-only" type="number" id="s-t3" placeholder="48.0" step="0.1" inputmode="decimal" oninput="updateUS()"></div>
@@ -439,68 +446,104 @@ function switchMethod(m){
   updateUS();
 }
 
+var CIRC = ['①','②','③'];
+function judgeTag(ok){ return ok ? '<span class="tag ok">적합</span>' : '<span class="tag ng">미달</span>'; }
+
+// 측정값 읽기: 직접법은 1점, 표면법은 3점
+function readPoints(){
+  if(US.method==='direct') return [{no:'', L:val('d-L'), t:val('d-t'), k:1}];
+  return [1,2,3].map(function(i){ return {no:CIRC[i-1], L:val('s-L'+i), t:val('s-t'+i), k:1.05}; });
+}
+function okNum(v){ return !isNaN(v) && v>0; }
+
 function updateUS(){
+  var surface = US.method==='surface';
   document.getElementById('us-formula').textContent = 'F = (102Vd − 117) × 0.098  [MPa]\n'
-    + (US.method==='direct' ? 'Vd = L(mm) ÷ t(μs)  [km/s]' : 'Vd = (L ÷ t) × 1.05  [km/s, 표면법]');
+    + (surface ? 'Vd = (L ÷ t) × 1.05  [km/s, 표면법]' : 'Vd = L(mm) ÷ t(μs)  [km/s]');
+  document.querySelectorAll('.t-hint').forEach(function(el){ el.classList.toggle('hidden', US.mode!=='rev'); });
   var box = document.getElementById('us-result');
   var ratioBox = document.getElementById('ratio-box');
   ratioBox.classList.add('hidden');
+  var pts = readPoints();
+  pts.forEach(function(p){
+    p.vd = (okNum(p.L) && okNum(p.t)) ? p.L/p.t*p.k : null;
+    p.F = p.vd!==null ? US_F(p.vd) : null;
+  });
+  var vdStr = function(p){ return surface ? p.L+'÷'+p.t+'×1.05' : p.L+'÷'+p.t; };
 
+  /* ---------- 역계산: 목표강도 → 필요 Vd, 측점별 허용 t ---------- */
   if(US.mode==='rev'){
     var F = val('us-target');
-    if(isNaN(F) || F<=0){ box.innerHTML = emptyResult('목표 강도를 입력하면 필요한 Vd(와 전파시간)를 계산합니다.'); return; }
+    if(!okNum(F)){ box.innerHTML = emptyResult('목표 강도를 입력하면 필요한 Vd와 측점별 허용 전파시간을 계산합니다.'); return; }
     var vReq = US_INV(F);
-    var lines = [];
-    if(US.method==='direct'){
-      var L = val('d-L');
-      if(!isNaN(L) && L>0) lines.push('L = '+L+' mm → t ≤ '+fx(L/vReq,1)+' μs');
-    } else {
-      [1,2,3].forEach(function(i){
-        var L = val('s-L'+i);
-        if(!isNaN(L) && L>0) lines.push(['①','②','③'][i-1]+' L = '+L+' mm → t ≤ '+fx(L*1.05/vReq,1)+' μs');
-      });
-    }
+    var withL = pts.filter(function(p){ return okNum(p.L); });
+    var cells = withL.map(function(p){
+      var tMax = p.L*p.k/vReq;
+      var judged = p.vd!==null;
+      return '<div class="cell">'
+        + '<div class="cl">'+(p.no||'측점')+' L='+p.L+'</div>'
+        + '<div class="cv">≤ '+fx(tMax,1)+'<small> μs</small></div>'
+        + (judged ? '<div class="cs">측정 '+p.t+'μs · '+fx(p.F,2)+'MPa '+judgeTag(p.t<=tMax)+'</div>' : '')
+        + '</div>';
+    }).join('');
+    var lines = withL.map(function(p){
+      var tMax = p.L*p.k/vReq;
+      var s = (p.no ? p.no+' ' : '')+'t ≤ L'+(surface?'×1.05':'')+' ÷ Vd = '+p.L+(surface?'×1.05':'')+' ÷ '+fx(vReq,4)+' = <b>'+fx(tMax,1)+' μs</b>';
+      if(p.vd!==null) s += '\n   측정 t='+p.t+' → Vd='+fx(p.vd,4)+' → F='+fx(p.F,2)+' MPa ('+(p.t<=tMax?'적합':'미달')+')';
+      return s;
+    });
     box.innerHTML = '<div class="result">'
-      + '<div class="res-head"><div class="res-label">필요 초음파속도 Vd</div><span class="res-value">'+fx(vReq,3)+'</span><span class="res-unit">km/s</span>'
-      + '<div class="res-note">측정 Vd가 <b>'+fx(vReq,3)+' km/s 이상</b>이면 목표 '+F+' MPa 이상으로 추정됩니다.</div></div>'
+      + '<div class="res-head"><div class="res-label">목표 '+F+' MPa 에 필요한 초음파속도</div><span class="res-value">'+fx(vReq,3)+'</span><span class="res-unit">km/s</span>'
+      + (cells ? '<div class="multi">'+cells+'</div>' : '<div class="res-note">측정 거리 L을 입력하면 측점별 허용 전파시간이 표시됩니다.</div>')
+      + '</div>'
       + step(1,'식을 Vd 로 정리','Vd = (F ÷ 0.098 + 117) ÷ 102\n   = ('+F+' ÷ 0.098 + 117) ÷ 102\n   = <b>'+fx(vReq,4)+' km/s</b>')
-      + step(2,'허용 전파시간 ('+(US.method==='direct'?'직접법':'표면법')+')', lines.length ? lines.join('\n') : '측정 거리 L을 입력하면 기준 전파시간(t)이 표시됩니다.')
+      + (lines.length ? step(2,'측점별 허용 전파시간'+(pts.some(function(p){return p.vd!==null;})?' · 측정값 판정':''), lines.join('\n')) : '')
+      + '<div class="hint" style="margin-top:8px">측정 t를 함께 입력하면 측점별로 적합/미달을 표시합니다.</div>'
       + '</div>';
     return;
   }
 
-  // 정방향: Vd 산정 → 추정식 대입
-  var vd = null, vdLines = '';
-  if(US.method==='direct'){
-    var L = val('d-L'), t = val('d-t');
-    if(isNaN(L)||isNaN(t)||L<=0||t<=0){ box.innerHTML = emptyResult('L과 t를 입력하면 바로 계산됩니다.'); return; }
-    vd = L/t;
-    vdLines = 'Vd = L ÷ t = '+L+' ÷ '+t+'\n   = <b>'+fx(vd,4)+' km/s</b>';
-  } else {
-    var pts = [1,2,3].map(function(i){ return [val('s-L'+i), val('s-t'+i)]; });
-    var vds = pts.map(function(p){ return (!isNaN(p[0])&&!isNaN(p[1])&&p[0]>0&&p[1]>0) ? p[0]/p[1]*1.05 : null; });
-    if(vds.every(function(v){ return v===null; })){ box.innerHTML = emptyResult('측점 ①~③의 L과 t를 입력하면 바로 계산됩니다.'); return; }
-    vdLines = vds.map(function(v,i){
-      return ['①','②','③'][i]+' '+(v===null ? '—' : pts[i][0]+'÷'+pts[i][1]+'×1.05 = '+fx(v,4));
-    }).join('\n');
-    if(vds.some(function(v){ return v===null; })){
-      box.innerHTML = '<div class="result">'+step(1,'Vd 산정 (km/s)', vdLines)+'<div class="res-note" style="text-align:center;padding-top:8px;color:#8e8e93">세 측점을 모두 입력하면 평균 Vd로 강도를 계산합니다.</div></div>';
-      return;
-    }
-    document.getElementById('ratio-12').textContent = fx(vds[0]/vds[1]*100,2)+'%';
-    document.getElementById('ratio-23').textContent = fx(vds[1]/vds[2]*100,2)+'%';
-    document.getElementById('ratio-31').textContent = fx(vds[2]/vds[0]*100,2)+'%';
-    ratioBox.classList.remove('hidden');
-    vd = (vds[0]+vds[1]+vds[2])/3;
-    vdLines += '\n평균 Vd = <b>'+fx(vd,4)+' km/s</b>';
+  /* ---------- 정방향: 측점별 Vd → 측점별 강도 ---------- */
+  var done = pts.filter(function(p){ return p.vd!==null; });
+  if(!done.length){
+    box.innerHTML = emptyResult(surface ? '측점별로 L과 t를 입력하면 측점마다 바로 강도가 계산됩니다.' : 'L과 t를 입력하면 바로 계산됩니다.');
+    return;
   }
-  var F = US_F(vd);
+
+  if(!surface){
+    var p = pts[0];
+    box.innerHTML = '<div class="result">'
+      + '<div class="res-head"><div class="res-label">추정 압축강도 F</div><span class="res-value">'+fx(p.F,2)+'</span><span class="res-unit">MPa</span>'
+      + '<div class="res-note">Vd = '+fx(p.vd,4)+' km/s</div></div>'
+      + step(1,'Vd 산정 (직접법)','Vd = L ÷ t = '+vdStr(p)+'\n   = <b>'+fx(p.vd,4)+' km/s</b>')
+      + step(2,'추정식 대입','F = (102 × Vd − 117) × 0.098\n  = (102 × '+fx(p.vd,4)+' − 117) × 0.098\n  = ('+fx(102*p.vd,2)+' − 117) × 0.098')
+      + step(3,'추정 압축강도','F = <b>'+fx(p.F,2)+' MPa</b>')
+      + '</div>';
+    return;
+  }
+
+  // 표면법: 측점마다 강도
+  var cells2 = pts.map(function(p){
+    return '<div class="cell'+(p.F===null?' off':'')+'">'
+      + '<div class="cl">'+p.no+(okNum(p.L)?' L='+p.L:'')+'</div>'
+      + '<div class="cv">'+(p.F===null?'—':fx(p.F,2))+'<small> MPa</small></div>'
+      + '<div class="cs">'+(p.vd===null?'입력 대기':'Vd '+fx(p.vd,3))+'</div></div>';
+  }).join('');
+  var all3 = done.length===3;
+  var avgVd = done.reduce(function(s,p){ return s+p.vd; },0)/done.length;
+  var avgF = done.reduce(function(s,p){ return s+p.F; },0)/done.length;
+  if(all3){
+    document.getElementById('ratio-12').textContent = fx(pts[0].vd/pts[1].vd*100,2)+'%';
+    document.getElementById('ratio-23').textContent = fx(pts[1].vd/pts[2].vd*100,2)+'%';
+    document.getElementById('ratio-31').textContent = fx(pts[2].vd/pts[0].vd*100,2)+'%';
+    ratioBox.classList.remove('hidden');
+  }
   box.innerHTML = '<div class="result">'
-    + '<div class="res-head"><div class="res-label">추정 압축강도 F</div><span class="res-value">'+fx(F,2)+'</span><span class="res-unit">MPa</span>'
-    + '<div class="res-note">Vd = '+fx(vd,4)+' km/s</div></div>'
-    + step(1,'Vd 산정 ('+(US.method==='direct'?'직접법':'표면법')+')', vdLines)
-    + step(2,'추정식 대입','F = (102 × Vd − 117) × 0.098\n  = (102 × '+fx(vd,4)+' − 117) × 0.098\n  = ('+fx(102*vd,2)+' − 117) × 0.098')
-    + step(3,'추정 압축강도','F = <b>'+fx(F,2)+' MPa</b>')
+    + '<div class="res-head"><div class="res-label">측점별 추정 압축강도 F</div><div class="multi">'+cells2+'</div>'
+    + '<div class="res-note">평균 F = <b>'+fx(avgF,2)+' MPa</b> (입력된 '+done.length+'개 측점, 평균 Vd '+fx(avgVd,4)+' km/s)</div></div>'
+    + step(1,'측점별 Vd 산정 (km/s)', pts.map(function(p){ return p.no+' '+(p.vd===null?'—':vdStr(p)+' = <b>'+fx(p.vd,4)+'</b>'); }).join('\n'))
+    + step(2,'측점별 추정식 대입 F = (102×Vd − 117)×0.098', pts.map(function(p){ return p.no+' '+(p.F===null?'—':'(102×'+fx(p.vd,4)+' − 117)×0.098 = <b>'+fx(p.F,2)+' MPa</b>'); }).join('\n'))
+    + step(3,'평균', 'F = ('+done.map(function(p){ return fx(p.F,2); }).join(' + ')+') ÷ '+done.length+' = <b>'+fx(avgF,2)+' MPa</b>')
     + '</div>';
 }
 
